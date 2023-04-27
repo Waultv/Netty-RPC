@@ -1,6 +1,9 @@
 package com.xuzc.netty.client;
 
+import com.alibaba.fastjson.JSONObject;
 import com.xuzc.netty.handler.SimpleClientHandler;
+import com.xuzc.netty.util.Response;
+
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -13,7 +16,7 @@ import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import io.netty.handler.codec.Delimiters;
 import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
-import io.netty.util.AttributeKey;
+
 
 
 public class NettyTCPClient {
@@ -26,7 +29,7 @@ public class NettyTCPClient {
          b.option(ChannelOption.SO_KEEPALIVE, true); // (4)
          b.handler(new ChannelInitializer<SocketChannel>() {
              @Override
-             public void initChannel(SocketChannel ch) {
+             public void initChannel(SocketChannel ch) throws Exception{
                  ch.pipeline().addLast(new DelimiterBasedFrameDecoder(Integer.MAX_VALUE,Delimiters.lineDelimiter()[0]));
                  ch.pipeline().addLast(new StringDecoder());
                  ch.pipeline().addLast(new SimpleClientHandler());
@@ -36,10 +39,17 @@ public class NettyTCPClient {
          String host = "localhost";
          int port = 8080;
           try {
-			ChannelFuture f = b.connect(host,port).sync();
+			 f = b.connect(host,port).sync();
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} 
+	}
+	
+	public static Response send(ClientRequest request) {
+		f.channel().writeAndFlush(JSONObject.toJSONString(request));
+		f.channel().writeAndFlush("\r\n");
+		DefaultFuture df = new DefaultFuture(request);
+		return df.get();
+		
 	}
 }

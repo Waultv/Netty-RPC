@@ -1,14 +1,18 @@
-package com.xuzc.netty.server;
+package com.xuzc.netty.init;
 
 import java.net.InetAddress;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.CreateMode;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextRefreshedEvent;
+import org.springframework.stereotype.Component;
 
 import com.xuzc.netty.constants.Constants;
 import com.xuzc.netty.factory.ZookeeperFactory;
 import com.xuzc.netty.handler.ServerHandler;
+import com.xuzc.netty.handler.SimpleServerHandler;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -24,8 +28,9 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 
-public class NettyServer {
-	public static void main(String[] args) throws InterruptedException {
+@Component
+public class NettyInital implements ApplicationListener<ContextRefreshedEvent> {
+	public void start() {
         EventLoopGroup parentGroup = new NioEventLoopGroup();
         EventLoopGroup childGroup = new NioEventLoopGroup();
 		try {
@@ -38,17 +43,19 @@ public class NettyServer {
         .childHandler(new ChannelInitializer<SocketChannel>() {
         	@Override
         	public void initChannel(SocketChannel ch) throws Exception {
-        		ch.pipeline().addLast(new DelimiterBasedFrameDecoder(Integer.MAX_VALUE,Delimiters.lineDelimiter()[0]));
+        		ch.pipeline().addLast(new DelimiterBasedFrameDecoder(65535,Delimiters.lineDelimiter()[0]));
         		ch.pipeline().addLast(new StringDecoder());
         		ch.pipeline().addLast(new IdleStateHandler(60,45,20,TimeUnit.SECONDS));
         		ch.pipeline().addLast(new ServerHandler());
         		ch.pipeline().addLast(new StringEncoder());
         	}
 		});
+        
         ChannelFuture f = sb.bind(8080).sync();
         CuratorFramework client = ZookeeperFactory.create();
         InetAddress netAddress = InetAddress.getLocalHost();
         client.create().withMode(CreateMode.EPHEMERAL).forPath(Constants.SERVER_PATH + netAddress.getHostAddress());
+        
         f.channel().closeFuture().sync();
 		}
 		catch (Exception e) {
@@ -56,5 +63,11 @@ public class NettyServer {
             parentGroup.shutdownGracefully();
             childGroup.shutdownGracefully();
 		}
+	}
+
+	@Override
+	public void onApplicationEvent(ContextRefreshedEvent event) {
+		this.start();
+		
 	}
 }

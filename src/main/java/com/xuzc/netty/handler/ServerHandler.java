@@ -1,9 +1,11 @@
 package com.xuzc.netty.handler;
 
 import org.apache.zookeeper.server.Request;
+import org.springframework.objenesis.instantiator.basic.NewInstanceInstantiator;
 
 import com.alibaba.fastjson.JSONObject;
 import com.xuzc.netty.handler.param.ServerRequest;
+import com.xuzc.netty.medium.Media;
 import com.xuzc.netty.util.Response;
 
 import io.netty.channel.ChannelHandlerContext;
@@ -11,16 +13,19 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 
-public class SimpleServerHandler extends ChannelInboundHandlerAdapter {
+public class ServerHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
-	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {		
+	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {	
+		System.out.println("serverHandler:"+msg.toString());
 		ServerRequest serverRequest =  JSONObject.parseObject(msg.toString(),ServerRequest.class);
-		System.out.println(msg.toString());
-		Response response = new Response();
-		response.setId(serverRequest.getId());
-		response.setResult("it is ok");
-		ctx.channel().writeAndFlush(JSONObject.toJSONString(response));
+		Media media = Media.newInstance();
+		Response res = media.process(serverRequest);
+//		
+//		Response response = new Response();
+//		response.setId(serverRequest.getId());
+//		response.setResult("it is ok");
+		ctx.channel().writeAndFlush(JSONObject.toJSONString(res));
 		ctx.channel().writeAndFlush("\r\n");
 	}
 
